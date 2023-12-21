@@ -62,12 +62,10 @@ type Command struct {
 	ShellCompletionCommandName string
 	// The function to call when checking for shell command completions
 	ShellComplete ShellCompleteFunc
-	// An action to execute before any subcommands are run, but after the context is ready
-	// If a non-nil error is returned, no subcommands are run
-	Before BeforeFunc
-	// An action to execute after any subcommands are run, but after the subcommand has finished
-	// It is run even if Action() panics
-	After AfterFunc
+	BeforeFlags   ActionFunc
+	AfterFlags    ActionFunc
+	BeforeCommand ActionFunc
+	AfterCommand  ActionFunc
 	// The function to call when this command is invoked
 	Action ActionFunc
 	// Execute this function if the proper command cannot be found
@@ -464,7 +462,35 @@ func (cmd *Command) Run(ctx context.Context, osArgs []string) (deferErr error) {
 		cmd.setupCommandGraph()
 	}
 
+	if cmd.BeforeFlags != nil && !cmd.Root().shellCompletion {
+		defer func() {
+			if err := cmd.BeforeFlags(ctx, cmd); err != nil {
+				err = cmd.handleExitCoder(ctx, err)
+
+				if deferErr != nil {
+					deferErr = newMultiError(deferErr, err)
+				} else {
+					deferErr = err
+				}
+			}
+		}()
+	}
+
 	args, err := cmd.parseFlags(&stringSliceArgs{v: osArgs})
+
+	if cmd.AfterFlags != nil && !cmd.Root().shellCompletion {
+		defer func() {
+			if err := cmd.AfterFlags(ctx, cmd); err != nil {
+				err = cmd.handleExitCoder(ctx, err)
+
+				if deferErr != nil {
+					deferErr = newMultiError(deferErr, err)
+				} else {
+					deferErr = err
+				}
+			}
+		}()
+	}
 
 	tracef("using post-parse arguments %[1]q (cmd=%[2]q)", args, cmd.Name)
 
@@ -516,9 +542,9 @@ func (cmd *Command) Run(ctx context.Context, osArgs []string) (deferErr error) {
 		return nil
 	}
 
-	if cmd.After != nil && !cmd.Root().shellCompletion {
+	if cmd.AfterCommand != nil && !cmd.Root().shellCompletion {
 		defer func() {
-			if err := cmd.After(ctx, cmd); err != nil {
+			if err := cmd.AfterCommand(ctx, cmd); err != nil {
 				err = cmd.handleExitCoder(ctx, err)
 
 				if deferErr != nil {
@@ -543,8 +569,8 @@ func (cmd *Command) Run(ctx context.Context, osArgs []string) (deferErr error) {
 		}
 	}
 
-	if cmd.Before != nil && !cmd.Root().shellCompletion {
-		if err := cmd.Before(ctx, cmd); err != nil {
+	if cmd.BeforeCommand != nil && !cmd.Root().shellCompletion {
+		if err := cmd.BeforeCommand(ctx, cmd); err != nil {
 			deferErr = cmd.handleExitCoder(ctx, err)
 			return deferErr
 		}

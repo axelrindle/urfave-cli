@@ -267,10 +267,10 @@ func TestParseAndRunShortOpts(t *testing.T) {
 func TestCommand_Run_DoesNotOverwriteErrorFromBefore(t *testing.T) {
 	cmd := &Command{
 		Name: "bar",
-		Before: func(context.Context, *Command) error {
+		BeforeCommand: func(context.Context, *Command) error {
 			return fmt.Errorf("before error")
 		},
-		After: func(context.Context, *Command) error {
+		AfterCommand: func(context.Context, *Command) error {
 			return fmt.Errorf("after error")
 		},
 		Writer: io.Discard,
@@ -289,7 +289,7 @@ func TestCommand_Run_BeforeSavesMetadata(t *testing.T) {
 
 	cmd := &Command{
 		Name: "bar",
-		Before: func(_ context.Context, cmd *Command) error {
+		BeforeCommand: func(_ context.Context, cmd *Command) error {
 			cmd.Metadata["msg"] = "hello world"
 			return nil
 		},
@@ -301,7 +301,7 @@ func TestCommand_Run_BeforeSavesMetadata(t *testing.T) {
 			receivedMsgFromAction = msg.(string)
 			return nil
 		},
-		After: func(_ context.Context, cmd *Command) error {
+		AfterCommand: func(_ context.Context, cmd *Command) error {
 			msg, ok := cmd.Metadata["msg"]
 			if !ok {
 				return errors.New("msg not found")
@@ -1359,7 +1359,7 @@ func TestCommand_BeforeFunc(t *testing.T) {
 	var err error
 
 	cmd := &Command{
-		Before: func(_ context.Context, cmd *Command) error {
+		BeforeCommand: func(_ context.Context, cmd *Command) error {
 			counts.Total++
 			counts.Before = counts.Total
 			s := cmd.String("opt")
@@ -1423,7 +1423,7 @@ func TestCommand_BeforeFunc(t *testing.T) {
 	counts = &opCounts{}
 
 	afterError := errors.New("fail again")
-	cmd.After = func(context.Context, *Command) error {
+	cmd.AfterCommand = func(context.Context, *Command) error {
 		return afterError
 	}
 
@@ -1451,12 +1451,12 @@ func TestCommand_BeforeAfterFuncShellCompletion(t *testing.T) {
 
 	cmd := &Command{
 		EnableShellCompletion: true,
-		Before: func(context.Context, *Command) error {
+		BeforeCommand: func(context.Context, *Command) error {
 			counts.Total++
 			counts.Before = counts.Total
 			return nil
 		},
-		After: func(context.Context, *Command) error {
+		AfterCommand: func(context.Context, *Command) error {
 			counts.Total++
 			counts.After = counts.Total
 			return nil
@@ -1502,7 +1502,7 @@ func TestCommand_AfterFunc(t *testing.T) {
 	var err error
 
 	cmd := &Command{
-		After: func(_ context.Context, cmd *Command) error {
+		AfterCommand: func(_ context.Context, cmd *Command) error {
 			counts.Total++
 			counts.After = counts.Total
 			s := cmd.String("opt")
@@ -1835,7 +1835,7 @@ func TestCommand_OrderOfOperations(t *testing.T) {
 			return nil
 		}
 
-		cmd.Before = beforeNoError
+		cmd.BeforeCommand = beforeNoError
 		cmd.CommandNotFound = func(context.Context, *Command, string) {
 			counts.Total++
 			counts.CommandNotFound = counts.Total
@@ -1847,7 +1847,7 @@ func TestCommand_OrderOfOperations(t *testing.T) {
 			return nil
 		}
 
-		cmd.After = afterNoError
+		cmd.AfterCommand = afterNoError
 		cmd.Commands = []*Command{
 			{
 				Name: "bar",
@@ -1909,7 +1909,7 @@ func TestCommand_OrderOfOperations(t *testing.T) {
 
 	t.Run("before with error", func(t *testing.T) {
 		cmd, counts := buildCmdCounts()
-		cmd.Before = func(context.Context, *Command) error {
+		cmd.BeforeCommand = func(context.Context, *Command) error {
 			counts.Total++
 			counts.Before = counts.Total
 			return errors.New("hay Before")
@@ -1926,7 +1926,7 @@ func TestCommand_OrderOfOperations(t *testing.T) {
 
 	t.Run("nil after", func(t *testing.T) {
 		cmd, counts := buildCmdCounts()
-		cmd.After = nil
+		cmd.AfterCommand = nil
 		r := require.New(t)
 
 		_ = cmd.Run(buildTestContext(t), []string{"command", "bar"})
@@ -1938,7 +1938,7 @@ func TestCommand_OrderOfOperations(t *testing.T) {
 
 	t.Run("after errors", func(t *testing.T) {
 		cmd, counts := buildCmdCounts()
-		cmd.After = func(context.Context, *Command) error {
+		cmd.AfterCommand = func(context.Context, *Command) error {
 			counts.Total++
 			counts.After = counts.Total
 			return errors.New("hay After")
@@ -2306,9 +2306,9 @@ func TestCommand_Run_SubcommandDoesNotOverwriteErrorFromBefore(t *testing.T) {
 						Name: "sub",
 					},
 				},
-				Name:   "bar",
-				Before: func(context.Context, *Command) error { return fmt.Errorf("before error") },
-				After:  func(context.Context, *Command) error { return fmt.Errorf("after error") },
+				Name:          "bar",
+				BeforeCommand: func(context.Context, *Command) error { return fmt.Errorf("before error") },
+				AfterCommand:  func(context.Context, *Command) error { return fmt.Errorf("after error") },
 			},
 		},
 	}

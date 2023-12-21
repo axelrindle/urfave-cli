@@ -5,15 +5,6 @@ import "context"
 // ShellCompleteFunc is an action to execute when the shell completion flag is set
 type ShellCompleteFunc func(context.Context, *Command)
 
-// BeforeFunc is an action that executes prior to any subcommands being run once
-// the context is ready.  If a non-nil error is returned, no subcommands are
-// run.
-type BeforeFunc func(context.Context, *Command) error
-
-// AfterFunc is an action that executes after any subcommands are run and have
-// finished. The AfterFunc is run even if Action() panics.
-type AfterFunc func(context.Context, *Command) error
-
 // ActionFunc is the action to execute when no subcommands are specified
 type ActionFunc func(context.Context, *Command) error
 
